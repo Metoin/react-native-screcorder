@@ -30,6 +30,13 @@ RCT_EXPORT_VIEW_PROPERTY(device, NSString);
     return _recorderView;
 }
 
+- (NSDictionary *)constantsToExport {
+    return @{@"SCFlashModeOff": @(SCFlashModeOff),
+             @"SCFlashModeOn": @(SCFlashModeOn),
+             @"SCFlashModeAuto": @(SCFlashModeAuto),
+             @"SCFlashModeLight": @(SCFlashModeLight)};
+}
+
 RCT_EXPORT_METHOD(record)
 {
     [_recorderView record];

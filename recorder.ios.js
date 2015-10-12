@@ -13,9 +13,10 @@ merge = merge || require('merge');
 
 var constants = {
   // Flash enum
-  SCFlashModeOff: 0,
-  SCFlashModeOn: 1,
-  SCFlashModeAuto: 2
+  SCFlashModeOff: NativeModules.RNRecorderManager.SCFlashModeOff,
+  SCFlashModeOn: NativeModules.RNRecorderManager.SCFlashModeOn,
+  SCFlashModeAuto: NativeModules.RNRecorderManager.SCFlashModeAuto,
+  SCFlashModeLight: NativeModules.RNRecorderManager.SCFlashModeLight,
 };
 
 /******* STYLES **********/
@@ -88,12 +89,14 @@ var Recorder = React.createClass({
 
   // Start recorder running
   startRunning(callback) {
+    callback = !!callback ? callback : () => {};
     NativeModules.RNRecorderManager.startRunning(callback);
   },
 
   // Stop recorder running
-  stopRunning() {
-    NativeModules.RNRecorderManager.stopRunning();
+  stopRunning(callback) {
+    callback = !!callback ? callback : () => {};
+    NativeModules.RNRecorderManager.stopRunning(callback);
   },
 
   /*** RENDER ***/

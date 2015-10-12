@@ -36,8 +36,8 @@
 
 - (instancetype)initWithEventDispatcher:(RCTEventDispatcher *)eventDispatcher
 {
-
-   if ((self = [super init])) {
+   self = [super initWithFrame:CGRectZero];
+   if (self) {
       if (_recorder == nil) {
          _recorder = [SCRecorder recorder];
          _recorder.captureSessionPreset = [SCRecorderTools bestCaptureSessionPresetCompatibleWithAllDevices];
@@ -58,7 +58,7 @@
 
    // Recorder config
    _recorder.autoSetVideoOrientation = [RCTConvert BOOL:[config objectForKey:@"autoSetVideoOrientation"]];
-   [_recorder setFlashMode:SCFlashModeLight];
+   _recorder.flashMode = [RCTConvert int:[config objectForKey:@"flashMode"]];
 
    // Video config
    _recorder.videoConfiguration.enabled = [RCTConvert BOOL:[video objectForKey:@"enabled"]];

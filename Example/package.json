@@ -8,6 +8,7 @@
   "dependencies": {
     "react-native": "^0.11.0",
     "react-native-screcorder": "git+https://git@github.com/guodong000/react-native-screcorder.git#master",
-    "react-native-video": "^0.6.0"
+    "react-native-video": "^0.6.0",
+    "react-timer-mixin": "^0.13.3"
   }
 }

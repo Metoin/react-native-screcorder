@@ -5,6 +5,7 @@
 'use strict';
 
 var React = require('react-native');
+var TimerMixin = require('react-timer-mixin');
 var {
   AppRegistry,
   View,
@@ -25,6 +26,7 @@ var Video     = require('react-native-video');
 /*********** RECORDER COMPONENT ***********/
 
 var Record = React.createClass({
+  mixins: [TimerMixin],
 
   getInitialState: function() {
     return {
@@ -34,15 +36,20 @@ var Record = React.createClass({
       barPosition: new Animated.Value(0),
       currentDuration: 0,
       maxDuration: 3000,
-      limitReached: false
+      limitReached: false,
+      config: {
+        flashMode: Recorder.constants.SCFlashModeOff,
+      }
     }
   },
 
   componentDidMount: function() {
     StatusBarIOS.setHidden(true, "slide");
-    this.refs.recorder.startRunning(() => {
-      console.log('start running');
-    });
+    setTimeout(() => {
+      this.refs.recorder.startRunning(() => {
+        console.log('start running');
+      });
+    }, 100);
   },
 
   componentWillUnmount: function() {
@@ -119,6 +126,7 @@ var Record = React.createClass({
   preview: function() {
     this.refs.recorder.save((err, url) => {
       console.log('url = ', url);
+      this.refs.recorder.stopRunning();
       this.props.navigator.push({component: Preview, passProps: {video: url}});
     });
   },
@@ -208,15 +216,7 @@ var Preview = React.createClass({
 
   render: function() {
     return (
-      <TouchableWithoutFeedback onPress={this.goBack}>
-        <Video
-          source={{uri: this.props.video}}
-          style={styles.wrapper}
-          muted={false}
-          resizeMode="cover"
-          paused={this.state.paused}
-          repeat={true}/>
-      </TouchableWithoutFeedback>
+      <Text>Hello</Text>
     );
   }
 
