@@ -18,5 +18,7 @@
 - (void)save:(void(^)(NSError *error, NSURL *outputUrl))callback;
 - (NSString*)saveImage:(UIImage*)image;
 
+- (BOOL)startRunning;
+- (void)stopRunning;
 
 @end

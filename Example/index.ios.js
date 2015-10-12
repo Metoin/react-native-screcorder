@@ -28,7 +28,7 @@ var Record = React.createClass({
 
   getInitialState: function() {
     return {
-      device: "front",
+      device: "back",
       recording: false,
       nbSegments: 0,
       barPosition: new Animated.Value(0),
@@ -40,6 +40,14 @@ var Record = React.createClass({
 
   componentDidMount: function() {
     StatusBarIOS.setHidden(true, "slide");
+    this.refs.recorder.startRunning(() => {
+      console.log('start running');
+    });
+  },
+
+  componentWillUnmount: function() {
+    console.log('stop running');
+    this.refs.recorder.stopRunning();
   },
 
   /*

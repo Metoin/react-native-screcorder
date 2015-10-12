@@ -86,6 +86,16 @@ var Recorder = React.createClass({
     NativeModules.RNRecorderManager.removeSegmentAtIndex(index);
   },
 
+  // Start recorder running
+  startRunning(callback) {
+    NativeModules.RNRecorderManager.startRunning(callback);
+  },
+
+  // Stop recorder running
+  stopRunning() {
+    NativeModules.RNRecorderManager.stopRunning();
+  },
+
   /*** RENDER ***/
 
   render() {

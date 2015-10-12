@@ -49,9 +49,9 @@ RCT_EXPORT_METHOD(capture:(RCTResponseSenderBlock)callback)
 RCT_EXPORT_METHOD(pause:(RCTResponseSenderBlock)callback)
 {
     [_recorderView pause:^{
-        
+
         SCRecordSessionSegment* ls = [_recorderView lastSegment];
-        
+
         if (ls != nil) {
             NSString *thumbnail = [_recorderView saveImage:ls.thumbnail];
             NSString *url = [ls.url relativeString];
@@ -60,7 +60,7 @@ RCT_EXPORT_METHOD(pause:(RCTResponseSenderBlock)callback)
             NSDictionary *props = @{@"url": url, @"thumbnail":thumbnail, @"duration":@(duration)};
             callback(@[props]);
         }
-    
+
     }];
 }
 
@@ -88,6 +88,20 @@ RCT_EXPORT_METHOD(save:(RCTResponseSenderBlock)callback)
             callback(@[[error localizedDescription], [NSNull null]]);
         }
     }];
+}
+
+RCT_EXPORT_METHOD(startRunning:(RCTResponseSenderBlock)callback)
+{
+    if ([_recorderView startRunning]) {
+        callback(@[[NSNull null], @(true)]);
+    } else {
+        callback(@[@"Recorder start running failed.", @(false)]);
+    }
+}
+
+RCT_EXPORT_METHOD(stopRunning:(RCTResponseSenderBlock)callback)
+{
+    [_recorderView stopRunning];
 }
 
 @end

@@ -20,14 +20,14 @@
    NSDictionary *_config;
    /* Camera type (front || back) */
    NSString *_device;
-   
+
    /* Video format */
    NSString *_videoFormat;
    /* Video quality */
    NSString *_videoQuality;
    /* Video filters */
    NSArray *_videoFilters;
-   
+
    /* Audio quality */
    NSString *_audioQuality;
 }
@@ -36,7 +36,7 @@
 
 - (instancetype)initWithEventDispatcher:(RCTEventDispatcher *)eventDispatcher
 {
-   
+
    if ((self = [super init])) {
       if (_recorder == nil) {
          _recorder = [SCRecorder recorder];
@@ -55,11 +55,11 @@
    _config = config;
    NSDictionary *video  = [RCTConvert NSDictionary:[config objectForKey:@"video"]];
    NSDictionary *audio  = [RCTConvert NSDictionary:[config objectForKey:@"audio"]];
-   
+
    // Recorder config
    _recorder.autoSetVideoOrientation = [RCTConvert BOOL:[config objectForKey:@"autoSetVideoOrientation"]];
    [_recorder setFlashMode:SCFlashModeLight];
-   
+
    // Video config
    _recorder.videoConfiguration.enabled = [RCTConvert BOOL:[video objectForKey:@"enabled"]];
    _recorder.videoConfiguration.bitrate = [RCTConvert int:[video objectForKey:@"bitrate"]];
@@ -68,7 +68,7 @@
    [self setVideoFormat:_videoFormat];
    _videoQuality = [RCTConvert NSString:[video objectForKey:@"quality"]];
    _videoFilters = [RCTConvert NSArray:[video objectForKey:@"filters"]];
-   
+
    // Audio config
    _recorder.audioConfiguration.enabled = [RCTConvert BOOL:[audio objectForKey:@"enabled"]];
    _recorder.audioConfiguration.bitrate = [RCTConvert int:[audio objectForKey:@"bitrate"]];
@@ -108,17 +108,17 @@
 #pragma mark - Private Methods
 
 - (NSArray *)sortFilterKeys:(NSDictionary *)dictionary {
-   
+
    NSArray *keys = [dictionary allKeys];
    NSArray *sortedKeys = [keys sortedArrayUsingComparator:^NSComparisonResult(id obj1, id obj2) {
       NSString *key1 = (NSString*)obj1;
-      
+
       if ([key1 isEqualToString:@"CIfilter"] || [key1 isEqualToString:@"file"])
          return (NSComparisonResult)NSOrderedAscending;
       else
          return (NSComparisonResult)NSOrderedDescending;
    }];
-   
+
    return sortedKeys;
 }
 
@@ -129,9 +129,9 @@
    for (NSDictionary* subfilter in _videoFilters) {
       SCFilter *subscfilter = [SCFilter emptyFilter];
       NSArray *sortedKeys = [self sortFilterKeys:subfilter];
-      
+
       for (NSString* propkey in sortedKeys) {
-         
+
          // CIfilter specified
          if ([propkey isEqualToString:@"CIfilter"]) {
             NSString *name = [RCTConvert NSString:[subfilter objectForKey:propkey]];
@@ -180,7 +180,7 @@
    NSString *name = [[NSProcessInfo processInfo] globallyUniqueString];
    name = [name stringByAppendingString:@".png"];
    NSString *filePath = [[paths objectAtIndex:0] stringByAppendingPathComponent:name];
-   
+
    [UIImagePNGRepresentation(image) writeToFile:filePath atomically:YES];
    return filePath;
 }
@@ -233,7 +233,7 @@
    assetExportSession.outputUrl = [_session outputUrl];
    assetExportSession.videoConfiguration.preset = _videoQuality;
    assetExportSession.audioConfiguration.preset = _audioQuality;
-   
+
    // Apply filters
    assetExportSession.videoConfiguration.filter = [self createFilter];
 
@@ -267,19 +267,19 @@
 - (void)layoutSubviews
 {
    [super layoutSubviews];
-   
+
    if (_previewView == nil) {
       _previewView = [[UIView alloc] initWithFrame:self.bounds];
       _recorder.previewView = _previewView;
       [_previewView setBackgroundColor:[UIColor blackColor]];
       [self insertSubview:_previewView atIndex:0];
-      [_recorder startRunning];
-   
-      _session = [SCRecordSession recordSession];
-      [self setVideoFormat:_videoFormat];
-      _recorder.session = _session;
+      // [_recorder startRunning];
+      //
+      // _session = [SCRecordSession recordSession];
+      // [self setVideoFormat:_videoFormat];
+      // _recorder.session = _session;
    }
-   
+
    return;
 }
 
@@ -301,6 +301,19 @@
 - (void)orientationChanged:(NSNotification *)notification
 {
    [_recorder previewViewFrameChanged];
+}
+
+- (BOOL)startRunning {
+   BOOL res = [_recorder startRunning];
+   _session = [SCRecordSession recordSession];
+   [self setVideoFormat:_videoFormat];
+   _recorder.session = _session;
+   return res;
+}
+
+- (void)stopRunning {
+   [_recorder stopRunning];
+   [_recorder unprepare];
 }
 
 @end
