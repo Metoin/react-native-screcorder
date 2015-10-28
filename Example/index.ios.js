@@ -14,14 +14,14 @@ var {
   TouchableOpacity,
   TouchableWithoutFeedback,
   Text,
-  NavigatorIOS
+  NavigatorIOS,
+  SliderIOS,
 } = React;
 
 var styles    = require('./style');
 var screen    = require('Dimensions').get('window');
 var Recorder  = require('react-native-screcorder');
 var Video     = require('react-native-video');
-
 
 /*********** RECORDER COMPONENT ***********/
 
@@ -30,7 +30,8 @@ var Record = React.createClass({
 
   getInitialState: function() {
     return {
-      device: "back",
+      device: 'back',
+      realtimePreview: false,
       recording: false,
       nbSegments: 0,
       barPosition: new Animated.Value(0),
@@ -39,12 +40,20 @@ var Record = React.createClass({
       limitReached: false,
       config: {
         flashMode: Recorder.constants.SCFlashModeOff,
-      }
-    }
+        video: {
+          enabled: true,
+          bitrate: 1200000,
+          timescale: 1,
+          format: 'MPEG4',
+          quality: 'MediumQuality', // HighestQuality || MediumQuality || LowQuality
+          filters: [],
+        },
+      },
+    };
   },
 
   componentDidMount: function() {
-    StatusBarIOS.setHidden(true, "slide");
+    StatusBarIOS.setHidden(true, 'slide');
     setTimeout(() => {
       this.refs.recorder.startRunning(() => {
         console.log('start running');
@@ -67,7 +76,7 @@ var Record = React.createClass({
       this.state.barPosition,
       {
         toValue: screen.width,
-        duration: this.state.maxDuration - this.state.currentDuration
+        duration: this.state.maxDuration - this.state.currentDuration,
       }
     );
     this.animBar.start(() => {
@@ -119,7 +128,7 @@ var Record = React.createClass({
       recording: false,
       nbSegments: 0,
       currentDuration: 0,
-      limitReached: false
+      limitReached: false,
     });
   },
 
@@ -127,12 +136,20 @@ var Record = React.createClass({
     this.refs.recorder.save((err, url) => {
       console.log('url = ', url);
       this.refs.recorder.stopRunning();
-      this.props.navigator.push({component: Preview, passProps: {video: url}});
+      this.props.navigator.push({
+        component: Preview,
+        passProps: {
+          video: url,
+          onPop: () => {
+            this.refs.recorder.startRunning();
+          },
+        },
+      });
     });
   },
 
   setDevice: function() {
-    var device = (this.state.device == "front") ? "back" : "front";
+    var device = (this.state.device == 'front') ? 'back' : 'front';
     this.setState({device: device});
   },
 
@@ -147,6 +164,32 @@ var Record = React.createClass({
   onNewSegment: function(segment) {
     console.log('segment = ', segment);
     this.state.currentDuration += segment.duration * 1000;
+  },
+
+  switchRealtimePreview: function() {
+    let newConfig = JSON.parse(JSON.stringify(this.state.config));
+    if (this.state.realtimePreview) {
+      newConfig.video.filters = [];
+    } else {
+      newConfig.video.filters = [
+        {CIfilter: 'CIExposureAdjust', inputEV: 1.0},
+      ];
+    }
+
+    this.setState({
+      config: newConfig,
+      realtimePreview: !this.state.realtimePreview,
+    });
+  },
+
+  changeValue: function(val) {
+    console.log('value: ' + val);
+    let newConfig = JSON.parse(JSON.stringify(this.state.config));
+    if (newConfig.video.filters.length > 0) {
+      newConfig.video.filters[0].inputEV = val;
+    }
+
+    this.setState({config: newConfig});
   },
 
   /*
@@ -173,16 +216,25 @@ var Record = React.createClass({
       );
     }
 
+    let realtimePreviewControlText = this.state.realtimePreview ? 'Realtime' : 'Normal';
     return (
       <Recorder
-        ref="recorder"
+        ref='recorder'
         config={this.state.config}
         device={this.state.device}
+        realtimePreview={this.state.realtimePreview}
         onNewSegment={this.onNewSegment}
         style={styles.wrapper}>
         {bar}
         <View style={styles.infoBtn}>
           <Text style={styles.infoBtnText}>{this.state.nbSegments}</Text>
+        </View>
+        <View style={[styles.sliderControls, {opacity:1.0}]}>
+          <SliderIOS style={styles.slider}
+            minimumValue={0}
+            maximumValue={10}
+            value={0.5}
+            onValueChange={this.changeValue}/>
         </View>
         <View style={styles.controls}>
           {control}
@@ -192,10 +244,13 @@ var Record = React.createClass({
           <TouchableOpacity onPress={this.preview} style={styles.controlBtn}>
             <Text>Preview</Text>
           </TouchableOpacity>
+          <TouchableOpacity onPress={this.switchRealtimePreview} style={styles.controlBtn}>
+            <Text>{realtimePreviewControlText}</Text>
+          </TouchableOpacity>
         </View>
       </Recorder>
     );
-  }
+  },
 
 });
 
@@ -205,32 +260,40 @@ var Preview = React.createClass({
 
   getInitialState: function() {
     return {
-      paused: false
+      paused: false,
     };
   },
 
   goBack: function() {
     this.setState({paused: true});
     this.props.navigator.pop();
+    this.props.onPop();
   },
 
   render: function() {
     return (
-      <Text>Hello</Text>
+      <TouchableWithoutFeedback onPress={this.goBack}>
+        <Video
+          source={{uri: this.props.video}}
+          style={styles.wrapper}
+          muted={false}
+          resizeMode='cover'
+          paused={this.state.paused}
+          repeat={true}/>
+      </TouchableWithoutFeedback>
     );
-  }
+  },
 
 });
 
 /*********** APP COMPONENT ***********/
 
 var App = React.createClass({
-
   render: function() {
     return (
       <NavigatorIOS initialRoute={{component: Record}} style={{flex: 1}} navigationBarHidden={true}/>
     );
-  }
+  },
 });
 
 AppRegistry.registerComponent('Example', () => App);

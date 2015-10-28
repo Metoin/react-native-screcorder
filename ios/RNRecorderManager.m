@@ -13,6 +13,7 @@
 RCT_EXPORT_MODULE();
 RCT_EXPORT_VIEW_PROPERTY(config, NSDictionary);
 RCT_EXPORT_VIEW_PROPERTY(device, NSString);
+RCT_EXPORT_VIEW_PROPERTY(realtimePreview, BOOL);
 
 @synthesize bridge = _bridge;
 

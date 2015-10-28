@@ -30,6 +30,9 @@
 
    /* Audio quality */
    NSString *_audioQuality;
+   
+   /* Realtime Preview */
+   BOOL _realtimePreview;
 }
 
 #pragma mark - Init
@@ -68,6 +71,9 @@
    [self setVideoFormat:_videoFormat];
    _videoQuality = [RCTConvert NSString:[video objectForKey:@"quality"]];
    _videoFilters = [RCTConvert NSArray:[video objectForKey:@"filters"]];
+   if (_recorder.CIImageRenderer) {
+      ((SCImageView *)_recorder.CIImageRenderer).filter = [self createFilter];
+   }
 
    // Audio config
    _recorder.audioConfiguration.enabled = [RCTConvert BOOL:[audio objectForKey:@"enabled"]];
@@ -102,6 +108,17 @@
    }
    if (_session != nil) {
       _session.fileType = _videoFormat;
+   }
+}
+
+- (void)setRealtimePreview:(BOOL)realtimePreview {
+   if (_realtimePreview != realtimePreview) {
+      _realtimePreview = realtimePreview;
+      if (_previewView) {
+         [_previewView removeFromSuperview];
+         _previewView = _realtimePreview ? (UIView *)_recorder.CIImageRenderer : _recorder.previewView;
+         [self insertSubview:_previewView atIndex:0];
+      }
    }
 }
 
@@ -269,10 +286,18 @@
    [super layoutSubviews];
 
    if (_previewView == nil) {
-      _previewView = [[UIView alloc] initWithFrame:self.bounds];
-      _recorder.previewView = _previewView;
-      [_previewView setBackgroundColor:[UIColor blackColor]];
+      SCImageView *ciImageRenderer = [[SCImageView alloc] initWithFrame:self.bounds];
+      ciImageRenderer.CIImage = [CIImage imageWithColor:[CIColor colorWithRed:0 green:0 blue:0]];
+      ciImageRenderer.filter = [self createFilter];
+      _recorder.CIImageRenderer = ciImageRenderer;
+      
+      UIView *view = [[UIView alloc] initWithFrame:self.bounds];
+      [view setBackgroundColor:[UIColor blackColor]];
+      _recorder.previewView = view;
+      
+      _previewView = _realtimePreview ? (UIView *)_recorder.CIImageRenderer : _recorder.previewView;
       [self insertSubview:_previewView atIndex:0];
+      
       // [_recorder startRunning];
       //
       // _session = [SCRecordSession recordSession];
@@ -308,6 +333,7 @@
    _session = [SCRecordSession recordSession];
    [self setVideoFormat:_videoFormat];
    _recorder.session = _session;
+   [_recorder focusCenter];
    return res;
 }
 
