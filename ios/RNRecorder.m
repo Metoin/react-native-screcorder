@@ -6,6 +6,10 @@
 
 #import <AVFoundation/AVFoundation.h>
 
+@interface RNRecorder()
+@property (nonatomic) AVAssetWriter *assetWrite;
+@end
+
 @implementation RNRecorder
 {
    /* Required to publish events */
@@ -202,6 +206,88 @@
    return filePath;
 }
 
+- (void)segmentByReversingAsset:(AVAsset *)asset completionHandler:(void (^)(SCRecordSessionSegment *))handler {
+   NSError *error;
+   AVAssetReader *reader = [[AVAssetReader alloc] initWithAsset:asset error:&error];
+   AVAssetTrack *videoTrack = [[asset tracksWithMediaType:AVMediaTypeVideo] lastObject];
+   
+   NSDictionary *readerOutputSettings = [NSDictionary dictionaryWithObjectsAndKeys:[NSNumber numberWithInt:kCVPixelFormatType_420YpCbCr8BiPlanarFullRange], kCVPixelBufferPixelFormatTypeKey, nil];
+   AVAssetReaderTrackOutput *readerOutput = [AVAssetReaderTrackOutput assetReaderTrackOutputWithTrack:videoTrack
+                                                                                       outputSettings:readerOutputSettings];
+   
+   [reader addOutput:readerOutput];
+   [reader startReading];
+   
+   // read in the samples
+   NSMutableArray *samples = [[NSMutableArray alloc] init];
+   
+   CMSampleBufferRef sample;
+   while((sample = [readerOutput copyNextSampleBuffer])) {
+      [samples addObject:(__bridge id)sample];
+      CFRelease(sample);
+   }
+   
+   NSString *name = [NSString stringWithFormat:@"%@.%@", [[NSProcessInfo processInfo] globallyUniqueString], @"mp4"];
+   NSURL *outputURL = [NSURL fileURLWithPath:[NSTemporaryDirectory() stringByAppendingPathComponent:name]];
+   
+   self.assetWrite = [[AVAssetWriter alloc] initWithURL:outputURL fileType:AVFileTypeMPEG4 error:&error];
+   NSDictionary *videoCompressProps = @{AVVideoAverageBitRateKey: @(videoTrack.estimatedDataRate)};
+   NSDictionary *writerOutputSettings = @{AVVideoCodecKey: AVVideoCodecH264,
+                                          AVVideoWidthKey: @(videoTrack.naturalSize.width),
+                                          AVVideoHeightKey: @(videoTrack.naturalSize.height),
+                                          AVVideoCompressionPropertiesKey: videoCompressProps};
+   AVAssetWriterInput *writerInput = [[AVAssetWriterInput alloc] initWithMediaType:AVMediaTypeVideo
+                                                                    outputSettings:writerOutputSettings
+                                                                  sourceFormatHint:(__bridge CMFormatDescriptionRef)videoTrack.formatDescriptions.lastObject];
+   [writerInput setExpectsMediaDataInRealTime:NO];
+   
+   // Initialize an input adaptor so that we can append PixelBuffer
+   AVAssetWriterInputPixelBufferAdaptor *pixelBufferAdaptor =
+      [[AVAssetWriterInputPixelBufferAdaptor alloc] initWithAssetWriterInput:writerInput
+                                                 sourcePixelBufferAttributes:nil];
+   [self.assetWrite addInput:writerInput];
+   [self.assetWrite startWriting];
+   [self.assetWrite startSessionAtSourceTime:CMSampleBufferGetPresentationTimeStamp((__bridge CMSampleBufferRef)samples[0])];
+   
+   // Append the frames to the output.
+   // Notice we append the frames from the tail end, using the timing of the frames from the front.
+   for(NSInteger i = 0; i < samples.count; i++) {
+      // Get the presentation time for the frame
+      CMTime presentationTime = CMSampleBufferGetPresentationTimeStamp((__bridge CMSampleBufferRef)samples[i]);
+      
+      // take the image/pixel buffer from tail end of the array
+      CVPixelBufferRef imageBufferRef = CMSampleBufferGetImageBuffer((__bridge CMSampleBufferRef)samples[samples.count - i - 1]);
+      
+      while (!writerInput.readyForMoreMediaData) {
+         [NSThread sleepForTimeInterval:0.1];
+      }
+      
+      [pixelBufferAdaptor appendPixelBuffer:imageBufferRef withPresentationTime:presentationTime];
+      
+   }
+   
+   [self.assetWrite finishWritingWithCompletionHandler:^{
+      handler([SCRecordSessionSegment segmentWithURL:outputURL info:nil]);
+      self.assetWrite = nil;
+   }];
+}
+
+- (void)commonSave:(void(^)(NSError *error, NSURL *outputUrl))callback {
+   AVAsset *asset = [_session assetRepresentingSegments];
+   SCAssetExportSession *assetExportSession = [[SCAssetExportSession alloc] initWithAsset:asset];
+   assetExportSession.outputFileType = _videoFormat;
+   assetExportSession.outputUrl = [_session outputUrl];
+   assetExportSession.videoConfiguration.preset = _videoQuality;
+   assetExportSession.audioConfiguration.preset = _audioQuality;
+   
+   // Apply filters
+   assetExportSession.videoConfiguration.filter = [self createFilter];
+   
+   [assetExportSession exportAsynchronouslyWithCompletionHandler: ^{
+      callback(assetExportSession.error, assetExportSession.outputUrl);
+   }];
+}
+
 #pragma mark - Public Methods
 
 - (void)record
@@ -245,18 +331,14 @@
 - (void)save:(void(^)(NSError *error, NSURL *outputUrl))callback
 {
    AVAsset *asset = _session.assetRepresentingSegments;
-   SCAssetExportSession *assetExportSession = [[SCAssetExportSession alloc] initWithAsset:asset];
-   assetExportSession.outputFileType = _videoFormat;
-   assetExportSession.outputUrl = [_session outputUrl];
-   assetExportSession.videoConfiguration.preset = _videoQuality;
-   assetExportSession.audioConfiguration.preset = _audioQuality;
-
-   // Apply filters
-   assetExportSession.videoConfiguration.filter = [self createFilter];
-
-   [assetExportSession exportAsynchronouslyWithCompletionHandler: ^{
-      callback(assetExportSession.error, assetExportSession.outputUrl);
-   }];
+   if (self.palindromicSaveMode) {
+      [self segmentByReversingAsset:asset completionHandler:^(SCRecordSessionSegment *segment) {
+         [_session addSegment:segment];
+         [self commonSave:callback];
+      }];
+   } else {
+      [self commonSave:callback];
+   }
 }
 
 

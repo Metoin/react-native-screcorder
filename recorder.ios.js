@@ -36,6 +36,7 @@ var Recorder = React.createClass({
     config: PropTypes.object,
     device: PropTypes.string,
     realtimePreview: PropTypes.bool,
+    palindromicSaveMode: PropTypes.bool,
     onNewSegment: PropTypes.function,
   },
 

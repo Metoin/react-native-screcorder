@@ -8,6 +8,8 @@
 
 - (instancetype)initWithEventDispatcher:(RCTEventDispatcher *)eventDispatcher NS_DESIGNATED_INITIALIZER;
 
+@property (nonatomic) BOOL palindromicSaveMode;
+
 - (void)record;
 - (void)capture:(void(^)(NSError *error, NSString *url))callback;
 - (void)pause:(void(^)())completionHandler;
