@@ -206,7 +206,7 @@
    return filePath;
 }
 
-- (void)segmentByReversingAsset:(AVAsset *)asset completionHandler:(void (^)(SCRecordSessionSegment *))handler {
+- (void)segmentByReversingAsset:(AVAsset *)asset completionHandler:(void (^)(AVAsset *))handler {
    NSError *error;
    AVAssetReader *reader = [[AVAssetReader alloc] initWithAsset:asset error:&error];
    AVAssetTrack *videoTrack = [[asset tracksWithMediaType:AVMediaTypeVideo] lastObject];
@@ -267,13 +267,12 @@
    }
    
    [self.assetWrite finishWritingWithCompletionHandler:^{
-      handler([SCRecordSessionSegment segmentWithURL:outputURL info:nil]);
+      handler([AVAsset assetWithURL:outputURL]);
       self.assetWrite = nil;
    }];
 }
 
-- (void)commonSave:(void(^)(NSError *error, NSURL *outputUrl))callback {
-   AVAsset *asset = [_session assetRepresentingSegments];
+- (void)commonSaveAsset:(AVAsset *)asset callback:(void(^)(NSError *error, NSURL *outputUrl))callback {
    SCAssetExportSession *assetExportSession = [[SCAssetExportSession alloc] initWithAsset:asset];
    assetExportSession.outputFileType = _videoFormat;
    assetExportSession.outputUrl = [_session outputUrl];
@@ -286,6 +285,53 @@
    [assetExportSession exportAsynchronouslyWithCompletionHandler: ^{
       callback(assetExportSession.error, assetExportSession.outputUrl);
    }];
+}
+
+- (AVAsset *)mergeAsset:(AVAsset *)asset another:(AVAsset *)another trimRatio:(CGFloat)trimRatio {
+   AVMutableComposition *composition = [[AVMutableComposition alloc] init];
+   AVMutableCompositionTrack *mutableCompVideoTrack = [composition addMutableTrackWithMediaType:AVMediaTypeVideo
+                                                                          preferredTrackID:kCMPersistentTrackID_Invalid];
+   AVMutableCompositionTrack *mutableCompAudioTrack = [composition addMutableTrackWithMediaType:AVMediaTypeAudio
+                                                                          preferredTrackID:kCMPersistentTrackID_Invalid];
+   
+   CMTime currentCTime = kCMTimeZero;
+   CMTime start = CMTimeMake(asset.duration.value * trimRatio, asset.duration.timescale);
+   CMTime duration = CMTimeMake(asset.duration.value * (1 - trimRatio), asset.duration.timescale);
+   CMTimeRange timeRange = CMTimeRangeMake(start, duration);
+   if ([[asset tracksWithMediaType:AVMediaTypeAudio] count]) {
+      [mutableCompAudioTrack insertTimeRange:timeRange
+                                     ofTrack:[[asset tracksWithMediaType:AVMediaTypeAudio] objectAtIndex:0]
+                                      atTime:currentCTime error:nil];
+   }
+   if ([[asset tracksWithMediaType:AVMediaTypeVideo] count]) {
+      [mutableCompVideoTrack insertTimeRange:timeRange
+                                     ofTrack:[[asset tracksWithMediaType:AVMediaTypeVideo] objectAtIndex:0]
+                                      atTime:currentCTime
+                                       error:nil];
+   }
+   
+   currentCTime = CMTimeAdd(currentCTime, duration);
+   start = kCMTimeZero;
+   duration = CMTimeMake(another.duration.value * (1 - trimRatio), another.duration.timescale);
+   timeRange = CMTimeRangeMake(start, duration);
+   if ([[another tracksWithMediaType:AVMediaTypeAudio] count]) {
+      [mutableCompAudioTrack insertTimeRange:timeRange
+                                     ofTrack:[[another tracksWithMediaType:AVMediaTypeAudio] objectAtIndex:0]
+                                      atTime:currentCTime
+                                       error:nil];
+   }
+   if ([[another tracksWithMediaType:AVMediaTypeVideo] count]) {
+      [mutableCompVideoTrack insertTimeRange:timeRange
+                                     ofTrack:[[another tracksWithMediaType:AVMediaTypeVideo] objectAtIndex:0]
+                                      atTime:currentCTime
+                                       error:nil];
+   }
+   
+   if (self.palindromicSaveMode) {
+      [composition removeTrack:mutableCompAudioTrack];
+   }
+   
+   return composition;
 }
 
 #pragma mark - Public Methods
@@ -332,12 +378,14 @@
 {
    AVAsset *asset = _session.assetRepresentingSegments;
    if (self.palindromicSaveMode) {
-      [self segmentByReversingAsset:asset completionHandler:^(SCRecordSessionSegment *segment) {
-         [_session addSegment:segment];
-         [self commonSave:callback];
+      [self segmentByReversingAsset:asset completionHandler:^(AVAsset *reversedAsset) {
+         [self commonSaveAsset:[self mergeAsset:asset
+                                        another:reversedAsset
+                                      trimRatio:self.discardRatio.floatValue] 
+                      callback:callback];
       }];
    } else {
-      [self commonSave:callback];
+      [self commonSaveAsset:[_session assetRepresentingSegments] callback:callback];
    }
 }
 

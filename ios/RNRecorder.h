@@ -9,6 +9,7 @@
 - (instancetype)initWithEventDispatcher:(RCTEventDispatcher *)eventDispatcher NS_DESIGNATED_INITIALIZER;
 
 @property (nonatomic) BOOL palindromicSaveMode;
+@property (nonatomic) NSNumber *discardRatio;
 
 - (void)record;
 - (void)capture:(void(^)(NSError *error, NSString *url))callback;

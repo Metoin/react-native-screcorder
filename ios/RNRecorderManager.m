@@ -15,6 +15,7 @@ RCT_EXPORT_VIEW_PROPERTY(config, NSDictionary);
 RCT_EXPORT_VIEW_PROPERTY(device, NSString);
 RCT_EXPORT_VIEW_PROPERTY(realtimePreview, BOOL);
 RCT_EXPORT_VIEW_PROPERTY(palindromicSaveMode, BOOL);
+RCT_EXPORT_VIEW_PROPERTY(discardRatio, NSNumber);
 
 @synthesize bridge = _bridge;
 
