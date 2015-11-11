@@ -37,6 +37,8 @@
    
    /* Realtime Preview */
    BOOL _realtimePreview;
+   
+   SCFilter *_mirrorFilter;
 }
 
 #pragma mark - Init
@@ -45,6 +47,7 @@
 {
    self = [super initWithFrame:CGRectZero];
    if (self) {
+      self.palindromicSaveMode = NO;
       if (_recorder == nil) {
          _recorder = [SCRecorder recorder];
          _recorder.captureSessionPreset = [SCRecorderTools bestCaptureSessionPresetCompatibleWithAllDevices];
@@ -77,6 +80,7 @@
    _videoFilters = [RCTConvert NSArray:[video objectForKey:@"filters"]];
    if (_recorder.CIImageRenderer) {
       ((SCImageView *)_recorder.CIImageRenderer).filter = [self createFilter];
+      [self mirrorPreviewOnDeviceFront];
    }
 
    // Audio config
@@ -100,6 +104,7 @@
    } else if ([device  isEqual: @"back"]) {
       _recorder.device = AVCaptureDevicePositionBack;
    }
+   [self mirrorPreviewOnDeviceFront];
 }
 
 - (void)setVideoFormat:(NSString*)format
@@ -127,6 +132,28 @@
 }
 
 #pragma mark - Private Methods
+
+- (void)mirrorPreviewOnDeviceFront {
+   if ([_device  isEqual: @"front"]) {
+      [self mirrorPreview:YES];
+   } else if ([_device isEqual: @"back"]) {
+      [self mirrorPreview:NO];
+   }
+}
+
+- (void)mirrorPreview:(BOOL)needMirror {
+   SCFilter *filter = ((SCImageView *)_recorder.CIImageRenderer).filter;
+   if (filter) {
+      if (needMirror) {
+         CGAffineTransform mirrorTransform = CGAffineTransformMakeScale(-1, 1);
+         _mirrorFilter = [SCFilter filterWithAffineTransform:mirrorTransform];
+         [filter addSubFilter:_mirrorFilter];
+      } else {
+         [filter removeSubFilter:_mirrorFilter];
+         _mirrorFilter = nil;
+      }
+   }
+}
 
 - (NSArray *)sortFilterKeys:(NSDictionary *)dictionary {
 
@@ -280,7 +307,13 @@
    assetExportSession.audioConfiguration.preset = _audioQuality;
    
    // Apply filters
-   assetExportSession.videoConfiguration.filter = [self createFilter];
+   SCFilter *filter = [self createFilter];
+//   if ([_device isEqual: @"front"]) {
+//      CGAffineTransform mirrorTransform = CGAffineTransformMakeScale(-1.0, 1);
+//      [filter addSubFilter:[SCFilter filterWithAffineTransform:mirrorTransform]];
+//   }
+   assetExportSession.videoConfiguration.filter = filter;
+   
    
    [assetExportSession exportAsynchronouslyWithCompletionHandler: ^{
       callback(assetExportSession.error, assetExportSession.outputUrl);
@@ -420,6 +453,7 @@
       ciImageRenderer.CIImage = [CIImage imageWithColor:[CIColor colorWithRed:0 green:0 blue:0]];
       ciImageRenderer.filter = [self createFilter];
       _recorder.CIImageRenderer = ciImageRenderer;
+      [self mirrorPreviewOnDeviceFront];
       
       UIView *view = [[UIView alloc] initWithFrame:self.bounds];
       [view setBackgroundColor:[UIColor blackColor]];
