@@ -5,9 +5,7 @@ var {
   requireNativeComponent,
   NativeModules,
   View,
-  merge
 } = React;
-merge = merge || require('merge');
 
 /******* ENUM **********/
 
@@ -105,7 +103,7 @@ var Recorder = React.createClass({
   /*** RENDER ***/
 
   render() {
-    var config = merge({
+    var config = {...{
       autoSetVideoOrientation: false,
       flashMode: constants.SCFlashModeOff,
 
@@ -138,12 +136,12 @@ var Recorder = React.createClass({
         format: 'MPEG4AAC',
         quality: 'HighestQuality', // HighestQuality || MediumQuality || LowQuality
       },
-    }, this.props.config);
+    }, ...this.props.config};
 
-    var nativeProps = merge(this.props, {
+    var nativeProps = {...this.props, ...{
       config: config,
       device: this.props.device || 'front',
-    });
+    }};
 
     return (
       <RNRecorder {...nativeProps}>
