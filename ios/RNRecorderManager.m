@@ -64,10 +64,11 @@ RCT_EXPORT_METHOD(pause:(RCTResponseSenderBlock)callback)
 
         if (ls != nil) {
             NSString *thumbnail = [_recorderView saveImage:ls.thumbnail];
+            NSString *lastImage = [_recorderView saveImage:ls.lastImage];
             NSString *url = [ls.url relativeString];
             float duration = CMTimeGetSeconds(ls.duration);
 
-            NSDictionary *props = @{@"url": url, @"thumbnail":thumbnail, @"duration":@(duration)};
+            NSDictionary *props = @{@"url": url, @"thumbnail":thumbnail, @"lastImage":lastImage, @"duration":@(duration)};
             callback(@[props]);
         }
 

@@ -229,7 +229,13 @@
    name = [name stringByAppendingString:@".png"];
    NSString *filePath = [[paths objectAtIndex:0] stringByAppendingPathComponent:name];
 
-   [UIImagePNGRepresentation(image) writeToFile:filePath atomically:YES];
+   UIImage *resImage = image;
+   if ([_device isEqualToString:@"front"]) {
+      resImage = [UIImage imageWithCGImage:image.CGImage scale:image.scale orientation:(image.imageOrientation + 4) % 8];
+   }
+
+   [UIImageJPEGRepresentation(resImage, 1.0) writeToFile:filePath atomically:YES];
+   
    return filePath;
 }
 
