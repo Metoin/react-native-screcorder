@@ -113,6 +113,7 @@ RCT_EXPORT_METHOD(startRunning:(RCTResponseSenderBlock)callback)
 RCT_EXPORT_METHOD(stopRunning:(RCTResponseSenderBlock)callback)
 {
     [_recorderView stopRunning];
+    callback(@[[NSNull null], @(YES)]);
 }
 
 @end
