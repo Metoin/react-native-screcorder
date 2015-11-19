@@ -41,6 +41,7 @@ var Recorder = React.createClass({
 
   getInitialState() {
     return {
+      running: false,
       recording: false,
     };
   },
@@ -91,13 +92,24 @@ var Recorder = React.createClass({
   // Start recorder running
   startRunning(callback) {
     callback = !!callback ? callback : () => {};
-    NativeModules.RNRecorderManager.startRunning(callback);
+    NativeModules.RNRecorderManager.startRunning((err, res) => {
+      this.setState({running: res});
+      callback(err, res);
+    });
   },
 
   // Stop recorder running
   stopRunning(callback) {
     callback = !!callback ? callback : () => {};
-    NativeModules.RNRecorderManager.stopRunning(callback);
+    NativeModules.RNRecorderManager.stopRunning((err, res) => {
+      this.setState({running: false});
+      callback(err, res);
+    });
+  },
+
+  // Is recorder running
+  isRunning() {
+    return this.state.running;
   },
 
   /*** RENDER ***/
